@@ -48,6 +48,13 @@ namespace A6k.Nats
 
         private readonly ReadOnlyMemory<byte> fields;
 
+        public NatsOperation(NatsOperationId opId, object op = null)
+        {
+            OpId = opId;
+            fields = default;
+            Op = op;
+        }
+
         public NatsOperation(NatsOperationId opId, ReadOnlyMemory<byte> fields, object op)
         {
             OpId = opId;

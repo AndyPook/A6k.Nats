@@ -45,9 +45,9 @@ namespace A6k.Nats.Tests
 
             Assert.Equal(NatsOperationId.INFO, op.OpId);
             Assert.NotNull(op.Op);
-            Assert.IsType<InfoOperation>(op.Op);
+            Assert.IsType<ServerInfo>(op.Op);
 
-            var info = (InfoOperation)op.Op;
+            var info = (ServerInfo)op.Op;
             Assert.Equal("svr1", info.ServerId);
         }
 

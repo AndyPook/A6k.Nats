@@ -6,8 +6,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\BedrockFramework\src\Bedrock.Framework.Experimental\Infrastructure\BufferExtensions.cs" Link="Bedrock.Framework.Infrastructure\BufferExtensions.cs" />
+    <Compile Include="..\BedrockFramework\src\Bedrock.Framework.Experimental\Infrastructure\BufferWriter.cs" Link="Bedrock.Framework.Infrastructure\BufferWriter.cs" />
+    <Compile Include="..\BedrockFramework\src\Bedrock.Framework.Experimental\Infrastructure\SequenceReaderExtensions.cs" Link="Bedrock.Framework.Infrastructure\SequenceReaderExtensions.cs" />
+    <Compile Include="..\BedrockFramework\src\Bedrock.Framework.Experimental\Infrastructure\TaskCompletionSourceWithCancellation.cs" Link="Bedrock.Framework.Infrastructure\TaskCompletionSourceWithCancellation.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Connections.Abstractions" Version="3.1.5" />
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BedrockFramework\src\Bedrock.Framework\Bedrock.Framework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Bedrock.Framework.Infrastructure\" />
   </ItemGroup>
 
 </Project>

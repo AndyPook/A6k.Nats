@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Buffers;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Windows.Markup;
 using A6k.Nats.Operations;
 using Bedrock.Framework.Infrastructure;
 using Bedrock.Framework.Protocols;
@@ -25,35 +26,48 @@ namespace A6k.Nats
         {
             message = default;
             var reader = new SequenceReader<byte>(input);
-            if (!reader.TryReadToAny(out ReadOnlySequence<byte> opBuffer, AnyDelimiter, advancePastDelimiter: false))
+            if (!reader.TryReadToAny(out ReadOnlySequence<byte> opBuffer, AnyDelimiter))
                 return false;
 
             var opId = NatsOperation.GetOpId(opBuffer.ToSpan());
 
-            if (reader.AdvancePastAny(SPorHT) == 0)
+            if (opId == NatsOperationId.OK)
             {
                 // +OK
+                reader.AdvancePastAny(AnyDelimiter);
+                examined = consumed = reader.Position;
                 message = new NatsOperation(opId, Empty, null);
                 return true;
-
             }
 
             if (!reader.TryReadToAny(out ReadOnlySequence<byte> fieldsValue, CRorLF))
                 return false;
+            reader.AdvancePastAny(AnyDelimiter);
 
             object op = opId switch
             {
                 NatsOperationId.INFO => ParseInfo(fieldsValue),
-                NatsOperationId.MSG => ParseMsg(fieldsValue),
                 NatsOperationId.PING => new PingOperation(),
                 NatsOperationId.PONG => new PongOperation(),
                 NatsOperationId.OK => new PongOperation(),
                 NatsOperationId.ERR => ParseErr(fieldsValue),
+                NatsOperationId.MSG => default,
 
                 _ => throw new InvalidOperationException($"unknown operation {opId}")
             };
 
-            consumed = examined = reader.Position;
+            if (opId == NatsOperationId.MSG)
+            {
+                var msg = ParseMsg(fieldsValue);
+                if (!TryReadBytes(ref reader, msg.NumBytes, out var data))
+                    return false;
+                msg.Data = data.ToArray();
+                op = msg;
+            }
+
+            reader.AdvancePastAny(AnyDelimiter);
+
+            examined = consumed = reader.Position;
             message = new NatsOperation(opId, fieldsValue.ToMemory(), op);
             return true;
         }
@@ -95,10 +109,10 @@ namespace A6k.Nats
             return Encoding.UTF8.GetString(arg.ToSpan());
         }
 
-        private long ReadNumber(ReadOnlySequence<byte> buffer)
+        private int ReadNumber(ReadOnlySequence<byte> buffer)
         {
             var span = buffer.ToSpan();
-            long result = 0;
+            int result = 0;
             for (int i = 0; i < buffer.Length; i++)
             {
                 result <<= 8;
@@ -108,7 +122,42 @@ namespace A6k.Nats
             }
             return result;
         }
+        private static bool TryReadBytes(ref SequenceReader<byte> reader, int length, out ReadOnlySpan<byte> value)
+        {
+            if (length <= 0)
+            {
+                value = Span<byte>.Empty;
+                return true;
+            }
 
+            var span = reader.UnreadSpan;
+            if (span.Length < length)
+                return TryReadMultisegmentBytes(ref reader, length, out value);
+
+            value = span.Slice(0, length);
+            reader.Advance(length);
+            return true;
+        }
+        private static unsafe bool TryReadMultisegmentBytes(ref SequenceReader<byte> reader, int length, out ReadOnlySpan<byte> value)
+        {
+            Debug.Assert(reader.UnreadSpan.Length < length);
+
+            // Not enough data in the current segment, try to peek for the data we need.
+            // In my use case, these strings cannot be more than 64kb, so stack memory is fine.
+            byte* buffer = stackalloc byte[length];
+            // Hack because the compiler thinks reader.TryCopyTo could store the span.
+            var tempSpan = new Span<byte>(buffer, length);
+
+            if (!reader.TryCopyTo(tempSpan))
+            {
+                value = default;
+                return false;
+            }
+
+            value = tempSpan;
+            reader.Advance(length);
+            return true;
+        }
 
         private ErrOperation ParseErr(ReadOnlySequence<byte> buffer)
         {
@@ -116,10 +165,10 @@ namespace A6k.Nats
             return new ErrOperation { Message = msg };
         }
 
-        private InfoOperation ParseInfo(ReadOnlySequence<byte> buffer)
+        private ServerInfo ParseInfo(ReadOnlySequence<byte> buffer)
         {
             var reader = new Utf8JsonReader(buffer);
-            var info = JsonSerializer.Deserialize<InfoOperation>(ref reader);
+            var info = JsonSerializer.Deserialize<ServerInfo>(ref reader);
             return info;
         }
 
@@ -128,7 +177,6 @@ namespace A6k.Nats
             var reader = new SequenceReader<byte>(buffer);
             var subject = ReadString(ref reader);
             string replyTo = null;
-            long numBytes = 0;
             ConsumeDelimiter(ref reader);
             var arg = ReadArg(ref reader);
             var delimiter = ConsumeDelimiter(ref reader);
@@ -140,8 +188,7 @@ namespace A6k.Nats
             if (delimiter == CR)
                 arg = ReadArgFinal(ref reader);
 
-            numBytes = ReadNumber(arg);
-
+            var numBytes = ReadNumber(arg);
 
             return new MsgOperation { Subject = subject, ReplyTo = replyTo, NumBytes = numBytes };
         }

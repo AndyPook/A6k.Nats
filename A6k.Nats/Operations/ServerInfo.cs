@@ -2,7 +2,7 @@
 
 namespace A6k.Nats.Operations
 {
-    public class InfoOperation
+    public class ServerInfo
     {
         [JsonPropertyName("server_id")]
         public string ServerId { get; set; }
