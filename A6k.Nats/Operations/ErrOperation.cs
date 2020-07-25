@@ -1,7 +1,12 @@
 ﻿namespace A6k.Nats.Operations
 {
-    public class ErrOperation
+    public readonly struct ErrOperation
     {
-        public string Message { get; set; }
+        public ErrOperation(string message)
+        {
+            Message = message;
+        }
+
+        public string Message { get; }
     }
 }

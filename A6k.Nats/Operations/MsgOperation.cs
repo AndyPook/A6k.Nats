@@ -1,12 +1,23 @@
-﻿namespace A6k.Nats.Operations
+﻿using System;
+
+namespace A6k.Nats.Operations
 {
-    public class MsgOperation
+    public readonly struct MsgOperation
     {
-        public string Subject { get; set; }
-        public string Sid { get; set; }
-        public string ReplyTo { get; set; }
-        public int NumBytes { get; set; }
-        public byte[] Data { get; set; }
+        public MsgOperation(string subject, string sid, string replyTo, int numBytes, ReadOnlySpan<byte> data)
+        {
+            Subject = subject;
+            Sid = sid;
+            ReplyTo = replyTo;
+            NumBytes = numBytes;
+            Data = data.ToArray();
+        }
+
+        public string Subject { get; }
+        public string Sid { get; }
+        public string ReplyTo { get; }
+        public int NumBytes { get; }
+        public ReadOnlyMemory<byte> Data { get; }
 
         public override string ToString() => $"subject:{Subject} Sid:{Sid} data:{NumBytes}";
     }

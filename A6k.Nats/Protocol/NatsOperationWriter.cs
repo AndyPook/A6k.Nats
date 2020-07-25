@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Buffers;
+using System.Text.Json;
 using A6k.Nats.Operations;
 using Bedrock.Framework.Protocols;
 
-namespace A6k.Nats
+namespace A6k.Nats.Protocol
 {
     public class NatsOperationWriter : IMessageWriter<NatsOperation>
     {
@@ -25,10 +26,13 @@ namespace A6k.Nats
                     break;
 
                 case NatsOperationId.PUB:
-                    WritePub(ref writer, operation.Op as PubOperation);
+                    WritePub(ref writer, (PubOperation)operation.Op);
                     break;
                 case NatsOperationId.SUB:
-                    WriteSub(ref writer, operation.Op as SubOperation);
+                    WriteSub(ref writer, (SubOperation)operation.Op);
+                    break;
+                case NatsOperationId.CONNECT:
+                    WriteConnect(ref writer, (ConnectOperation)operation.Op);
                     break;
             }
             writer.Commit();
@@ -44,7 +48,7 @@ namespace A6k.Nats
             }
             writer.WriteInt(op.Data.Length);
             writer.Write(CRLF);
-            writer.Write(op.Data);
+            writer.Write(op.Data.Span);
             writer.Write(CRLF);
         }
 
@@ -58,6 +62,13 @@ namespace A6k.Nats
             }
             writer.WriteString(" ");
             writer.WriteString(op.Sid);
+            writer.Write(CRLF);
+        }
+
+        private static void WriteConnect(ref NatsWriter writer, ConnectOperation op)
+        {
+            writer.WriteString($"CONNECT ");
+            writer.WriteJson(op);
             writer.Write(CRLF);
         }
     }

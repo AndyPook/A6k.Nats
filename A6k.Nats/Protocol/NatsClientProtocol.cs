@@ -1,46 +1,36 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using A6k.Nats.Operations;
 using Bedrock.Framework.Protocols;
 using Microsoft.AspNetCore.Connections;
 
-namespace A6k.Nats
+namespace A6k.Nats.Protocol
 {
     public class NatsClientProtocol
     {
-        public delegate ValueTask MsgHandler(string sid, ReadOnlySpan<byte> data);
+        public delegate ValueTask MsgHandler(string sid, string replyto, ReadOnlySpan<byte> data);
 
         private readonly ConnectionContext connection;
+        private readonly INatsOperationHandler operationHandler;
         private readonly NatsOperationWriter opWriter;
         private ChannelWriter<NatsOperation> outboundWriter;
 
-        public NatsClientProtocol(ConnectionContext connection)
+        public NatsClientProtocol(ConnectionContext connection, INatsOperationHandler operationHandler)
         {
             this.connection = connection;
+            this.operationHandler = operationHandler;
             opWriter = new NatsOperationWriter();
             StartInbound();
             StartOutbound();
         }
 
-        public ServerInfo Info { get; private set; }
 
         public MsgHandler OnMsg { get; set; }
 
-        public void Ping() => Send(new NatsOperation(NatsOperationId.PING));
-        public void Pong() => Send(new NatsOperation(NatsOperationId.PONG));
-        public void Pub(string subject, byte[] data)
-            => Send(new NatsOperation(NatsOperationId.PUB, new PubOperation { Subject = subject, Data = data }));
-
-        public void Sub(string subject, string sid)
-            => Send(new NatsOperation(NatsOperationId.SUB, new SubOperation { Subject = subject, Sid = sid }));
-
-
-        private ValueTask Send(NatsOperation operation) => outboundWriter.WriteAsync(operation);
+        public ValueTask Send(NatsOperationId opId, object op = default) => outboundWriter.WriteAsync(new NatsOperation(opId, op));
 
         private void StartOutbound(CancellationToken cancellationToken = default)
         {
@@ -90,7 +80,7 @@ namespace A6k.Nats
                         break;
                     protocolReader.Advance();
 
-                    await HandleOperation(result.Message);
+                    await operationHandler.HandleOperation(result.Message);
                 }
                 catch (Exception)
                 {
@@ -101,44 +91,6 @@ namespace A6k.Nats
             }
 
             Console.WriteLine("!!! exit inbound");
-        }
-
-        private ValueTask HandleOperation(NatsOperation op)
-        {
-            switch (op.OpId)
-            {
-                case NatsOperationId.PING:
-                    Console.WriteLine("--- ping");
-                    Pong();
-                    break;
-                case NatsOperationId.PONG:
-                    Console.WriteLine("--- pong");
-                    break;
-                case NatsOperationId.OK:
-                    Console.WriteLine("--- OK");
-                    break;
-                case NatsOperationId.ERR:
-                    Console.WriteLine($"--- ERR: {Encoding.UTF8.GetString(op.Fields)}");
-                    break;
-
-                case NatsOperationId.INFO:
-                    Console.WriteLine($"--- INFO: {Encoding.UTF8.GetString(op.Fields)}");
-                    Info = op.Op as ServerInfo;
-                    break;
-
-                case NatsOperationId.MSG:
-                    var msg = op.Op as MsgOperation;
-                    Console.WriteLine($"--- MSG: {Encoding.UTF8.GetString(op.Fields)} sid:{msg.Sid} data:{Encoding.UTF8.GetString(msg.Data)}");
-                    if (OnMsg != null)
-                        return OnMsg.Invoke(msg.Sid, msg.Data);
-                    break;
-
-                default:
-                    Console.WriteLine($"--- {op.OpId}: {Encoding.UTF8.GetString(op.Fields)}");
-                    break;
-            }
-
-            return default;
         }
     }
 }

@@ -3,9 +3,10 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using Bedrock.Framework.Protocols;
 
-namespace A6k.Nats
+namespace A6k.Nats.Protocol
 {
     public delegate void NatsWriterDelegate<TItem>(TItem item, ref NatsWriter writer);
 
@@ -34,6 +35,13 @@ namespace A6k.Nats
             var textSpan = GetSpan(textLength);
             Encoding.UTF8.GetBytes(text, textSpan);
             Advance(textLength);
+        }
+        public void WriteJson<T>(T data)
+        {
+            using var json = new Utf8JsonWriter(output);
+            JsonSerializer.Serialize<T>(json, data);
+            json.Flush();
+            Advance((int)json.BytesCommitted);
         }
     }
 

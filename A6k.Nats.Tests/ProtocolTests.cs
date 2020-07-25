@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Text;
 using A6k.Nats.Operations;
+using A6k.Nats.Protocol;
 using Xunit;
 
 namespace A6k.Nats.Tests
@@ -23,9 +24,11 @@ namespace A6k.Nats.Tests
                 throw new InvalidOperationException("bad parse");
 
             Assert.Equal(NatsOperationId.PUB, msg.OpId);
-
-            var fields = Encoding.UTF8.GetString(msg.Fields);
-            Assert.Equal("sub1 1", fields);
+            Assert.NotNull(msg.Op);
+            var pub = Assert.IsType<PubOperation>(msg.Op);
+            Assert.Equal("sub1", pub.Subject);
+            Assert.Equal(1, pub.Data.Length);
+            Assert.Equal((byte)'x', pub.Data.Span[0]);
         }
 
 

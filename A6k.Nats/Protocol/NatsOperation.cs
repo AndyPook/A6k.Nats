@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Text;
+using A6k.Nats.Operations;
 
-namespace A6k.Nats
+namespace A6k.Nats.Protocol
 {
     public enum NatsOperationId : long
     {
@@ -46,24 +47,13 @@ namespace A6k.Nats
 
         public static NatsOperationId GetOpId(string opName) => GetOpId(Encoding.ASCII.GetBytes(opName));
 
-        private readonly ReadOnlyMemory<byte> fields;
-
-        public NatsOperation(NatsOperationId opId, object op = null)
+        public NatsOperation(NatsOperationId opId, object op = default)
         {
             OpId = opId;
-            fields = default;
-            Op = op;
-        }
-
-        public NatsOperation(NatsOperationId opId, ReadOnlyMemory<byte> fields, object op)
-        {
-            OpId = opId;
-            this.fields = fields;
             Op = op;
         }
 
         public NatsOperationId OpId { get; }
-        public ReadOnlySpan<byte> Fields => fields.Span;
 
         public object Op { get; }
 

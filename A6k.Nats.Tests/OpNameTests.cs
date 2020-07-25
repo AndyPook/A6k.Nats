@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using A6k.Nats.Protocol;
 using Xunit;
 using Xunit.Abstractions;
 

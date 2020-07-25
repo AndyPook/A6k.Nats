@@ -31,15 +31,23 @@ namespace NatsConsole
                 .Build();
 
             var conn = await client.ConnectAsync(new IPEndPoint(IPAddress.Loopback, 4222));
-            var nats = new NatsClientProtocol(conn);
-            nats.OnMsg = (sid, data) =>
-            {
-                var text = Encoding.UTF8.GetString(data);
-                Console.WriteLine($"OnMsg: sid{sid} text:{text}");
-                return default;
-            };
+            var nats = new NatsClient();
+            await nats.ConnectAsync(new IPEndPoint(IPAddress.Loopback, 4222), sp);
 
-            nats.Sub("test2", "1");
+            nats.Sub("test2", "1", msg =>
+            {
+                var text = Encoding.UTF8.GetString(msg.Data.Span);
+                Console.WriteLine($"OnMsg: subject:{msg.Subject} sid:{msg.Sid} replyto:{msg.ReplyTo} text:{text}");
+            });
+
+            //nats.OnMsg = (sid, replyto, data) =>
+            //{
+            //    var text = Encoding.UTF8.GetString(data);
+            //    Console.WriteLine($"OnMsg: sid:{sid} replyto:{replyto} text:{text}");
+            //    return default;
+            //};
+
+            //nats.Sub("test2", "1");
 
             while (!cts.Token.IsCancellationRequested)
             {
@@ -55,7 +63,7 @@ namespace NatsConsole
         private static IServiceProvider ConfigureServices()
         {
             var services = new ServiceCollection();
-            
+
             services.AddLogging(logging => logging.AddConsole().SetMinimumLevel(LogLevel.Debug));
 
             return services.BuildServiceProvider();
