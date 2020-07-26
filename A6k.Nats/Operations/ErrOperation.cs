@@ -8,5 +8,7 @@
         }
 
         public string Message { get; }
+
+        public override string ToString() => Message;
     }
 }

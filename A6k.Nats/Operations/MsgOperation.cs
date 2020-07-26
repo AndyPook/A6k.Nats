@@ -19,6 +19,6 @@ namespace A6k.Nats.Operations
         public int NumBytes { get; }
         public ReadOnlyMemory<byte> Data { get; }
 
-        public override string ToString() => $"subject:{Subject} Sid:{Sid} data:{NumBytes}";
+        public override string ToString() => $"subject:{Subject} Sid:{Sid} data-size:{NumBytes}";
     }
 }

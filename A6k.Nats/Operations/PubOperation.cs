@@ -24,6 +24,6 @@ namespace A6k.Nats.Operations
 
         public ReadOnlyMemory<byte> Data { get; }
 
-        public override string ToString() => $"subject:{Subject} data:{Data.Length}";
+        public override string ToString() => $"subject:{Subject} data-size:{Data.Length}";
     }
 }
