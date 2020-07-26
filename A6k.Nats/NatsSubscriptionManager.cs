@@ -1,19 +1,17 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Text;
+﻿using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using A6k.Nats.Operations;
 using A6k.Nats.Protocol;
 
 namespace A6k.Nats
 {
-    public class NatsSubscriptionManager : INatSubscriptionManager
+    public class NatsSubscriptionManager : INatsSubscriptionManager
     {
-        private ConcurrentDictionary<(string Subject, string Sid), IMessageSubscription> subscriptions = new ConcurrentDictionary<(string Subject, string Sid), IMessageSubscription>();
+        private ConcurrentDictionary<string, IMessageSubscription> subscriptions = new ConcurrentDictionary<string, IMessageSubscription>();
 
         public ValueTask InvokeAsync(MsgOperation msg)
         {
-            if (subscriptions.TryGetValue((msg.Subject, msg.Sid), out var handler))
+            if (subscriptions.TryGetValue(msg.Sid, out var handler))
                 return handler.HandleAsync(msg);
 
             //var text = Encoding.UTF8.GetString(data);
@@ -23,12 +21,12 @@ namespace A6k.Nats
 
         public void Sub(string subject, string sid, IMessageSubscription handler)
         {
-            subscriptions[(subject, sid)] = handler;
+            subscriptions[sid] = handler;
         }
 
-        public void UnSub(string subject, string sid)
+        public void UnSub(string sid)
         {
-            subscriptions.TryRemove((subject, sid), out _);
+            subscriptions.TryRemove(sid, out _);
         }
     }
 }

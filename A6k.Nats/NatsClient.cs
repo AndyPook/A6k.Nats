@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Threading.Tasks;
 using A6k.Nats.Operations;
@@ -23,7 +23,7 @@ namespace A6k.Nats
     public class NatsClient : INatsOperationHandler
     {
         private NatsClientProtocol nats;
-        private INatSubscriptionManager subscriptions = new NatsSubscriptionManager();
+        private INatsSubscriptionManager subscriptions = new NatsSubscriptionManager();
 
         public ServerInfo Info { get; private set; }
 
