@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using A6k.Nats.Operations;
@@ -56,12 +56,12 @@ namespace A6k.Nats
         public void Sub(string subject, string sid, IMessageSubscription handler)
         {
             subscriptions.Sub(subject, sid, handler);
-            nats.Send(NatsOperationId.SUB, new SubOperation { Subject = subject, Sid = sid });
+            nats.Send(NatsOperationId.SUB, new SubOperation(subject, sid));
         }
-        public void UnSub(string sid, int maxMessages = 0)
+        public void UnSub(string sid, int? maxMessages = default)
         {
             //subscriptions.UnSub(sid);
-            nats.Send(NatsOperationId.UNSUB, new UnSubOperation { Sid = sid, MaxMessages = maxMessages });
+            nats.Send(NatsOperationId.UNSUB, new UnSubOperation(sid, maxMessages));
         }
 
         ValueTask INatsOperationHandler.HandleOperation(NatsOperation op)
