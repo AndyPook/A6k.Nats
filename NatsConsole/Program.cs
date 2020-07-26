@@ -15,6 +15,9 @@ namespace NatsConsole
         static async Task Main(string[] args)
         {
             Console.WriteLine("Hello World!");
+
+            // hit ctrl-C to close/exit
+
             var cts = new CancellationTokenSource();
             Console.CancelKeyPress += (_, e) =>
             {
@@ -34,21 +37,14 @@ namespace NatsConsole
             var nats = new NatsClient();
             await nats.ConnectAsync(new IPEndPoint(IPAddress.Loopback, 4222), sp);
 
+            // test this with "pub test2 2\r\nhi" from telnet
             nats.Sub("test2", "1", msg =>
             {
                 var text = Encoding.UTF8.GetString(msg.Data.Span);
                 Console.WriteLine($"OnMsg: subject:{msg.Subject} sid:{msg.Sid} replyto:{msg.ReplyTo} text:{text}");
             });
 
-            //nats.OnMsg = (sid, replyto, data) =>
-            //{
-            //    var text = Encoding.UTF8.GetString(data);
-            //    Console.WriteLine($"OnMsg: sid:{sid} replyto:{replyto} text:{text}");
-            //    return default;
-            //};
-
-            //nats.Sub("test2", "1");
-
+            // test this with "sub test1 1" from telnet
             while (!cts.Token.IsCancellationRequested)
             {
                 Console.WriteLine("pub...");
