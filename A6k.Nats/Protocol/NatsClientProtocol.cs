@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -15,22 +16,17 @@ namespace A6k.Nats.Protocol
 
         private readonly ConnectionContext connection;
         private readonly INatsOperationHandler operationHandler;
-        private readonly NatsOperationWriter opWriter;
-        private ChannelWriter<NatsOperation> outboundWriter;
+        private ChannelWriter<NatsOperation> outboundChannel;
 
         public NatsClientProtocol(ConnectionContext connection, INatsOperationHandler operationHandler)
         {
             this.connection = connection;
             this.operationHandler = operationHandler;
-            opWriter = new NatsOperationWriter();
             StartInbound();
             StartOutbound();
         }
 
-
-        public MsgHandler OnMsg { get; set; }
-
-        public ValueTask Send(NatsOperationId opId, object op = default) => outboundWriter.WriteAsync(new NatsOperation(opId, op));
+        public ValueTask Send(NatsOperationId opId, object op = default) => outboundChannel.WriteAsync(new NatsOperation(opId, op));
 
         private void StartOutbound(CancellationToken cancellationToken = default)
         {
@@ -38,7 +34,7 @@ namespace A6k.Nats.Protocol
             // I wouldn't expect this to grow too large
             // should add some metrics for monitoring
             var channel = Channel.CreateBounded<NatsOperation>(new BoundedChannelOptions(100) { SingleReader = true });
-            outboundWriter = channel.Writer;
+            outboundChannel = channel.Writer;
             var reader = channel.Reader;
 
             _ = ProcessOutbound(reader, cancellationToken).ConfigureAwait(false);
@@ -47,6 +43,7 @@ namespace A6k.Nats.Protocol
         private async ValueTask ProcessOutbound(ChannelReader<NatsOperation> outboundReader, CancellationToken cancellationToken)
         {
             await Task.Yield();
+            var opWriter = new NatsOperationWriter();
 
             try
             {
@@ -59,6 +56,11 @@ namespace A6k.Nats.Protocol
                 }
             }
             catch (OperationCanceledException) { /* ignore cancellation */ }
+            catch (IOException iox)
+            {
+                Console.WriteLine("outbound connection failed: " + iox.Message);
+                operationHandler.ConnectionClosed();
+            }
         }
 
 
@@ -77,11 +79,15 @@ namespace A6k.Nats.Protocol
                 {
                     var result = await protocolReader.ReadAsync(opReader, cancellationToken).ConfigureAwait(false);
                     if (result.IsCompleted)
+                    {
+                        Console.WriteLine("inbound connection closed");
                         break;
+                    }
                     protocolReader.Advance();
 
                     await operationHandler.HandleOperation(result.Message);
                 }
+                catch (OperationCanceledException) { /* ignore cancellation */ }
                 catch (Exception)
                 {
                     if (!connection.ConnectionClosed.IsCancellationRequested)
@@ -91,6 +97,7 @@ namespace A6k.Nats.Protocol
             }
 
             Console.WriteLine("!!! exit inbound");
+            operationHandler.ConnectionClosed();
         }
     }
 }

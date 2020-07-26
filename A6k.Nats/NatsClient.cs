@@ -80,12 +80,12 @@ namespace A6k.Nats
                     break;
                 case NatsOperationId.ERR:
                     var err = (ErrOperation)op.Op;
-                    Console.WriteLine($"--- ERR: {err.Message}");
+                    Console.WriteLine($"--- ERR: {err}");
                     break;
 
                 case NatsOperationId.INFO:
-                    Console.WriteLine($"--- INFO: {op.Op}");
-                    Info = op.Op as ServerInfo;
+                    Info = (ServerInfo)op.Op;
+                    Console.WriteLine($"--- INFO: {Info}");
                     break;
 
                 case NatsOperationId.MSG:
@@ -101,5 +101,9 @@ namespace A6k.Nats
             return default;
         }
 
+        void INatsOperationHandler.ConnectionClosed()
+        {
+            Console.WriteLine("Connection Closed");
+        }
     }
 }
