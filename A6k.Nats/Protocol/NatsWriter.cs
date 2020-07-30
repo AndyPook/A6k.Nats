@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Buffers.Text;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -12,10 +13,18 @@ namespace A6k.Nats.Protocol
 
     public ref partial struct NatsWriter
     {
+        /// <summary>
+        /// Write integer as a string.
+        /// </summary>
+        /// <param name="num"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt(int num)
         {
-            WriteString(num.ToString());
+            const int MaxLength = 11; // The string "-2147483647" (int.MinValue)
+
+            var textSpan = GetSpan(MaxLength);
+            if (Utf8Formatter.TryFormat(num, textSpan, out int bytesWritten))
+                Advance(bytesWritten);
         }
 
         /// <summary>
