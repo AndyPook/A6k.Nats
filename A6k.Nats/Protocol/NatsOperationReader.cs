@@ -126,7 +126,7 @@ namespace A6k.Nats.Protocol
         {
             if (!reader.TryReadToAny(out line, CRorLF))
                 return false;
-            reader.AdvancePastAny(AnyDelimiter);
+            reader.AdvancePastAny(CRorLF);
             return true;
         }
 
@@ -164,19 +164,18 @@ namespace A6k.Nats.Protocol
             var sid = ReadString(ref fieldReader);
             string replyTo = null;
             var delimiter = ConsumeDelimiter(ref fieldReader);
-            //if (delimiter == CR)
-            //    ;
-
             var arg = ReadArg(ref fieldReader);
-            delimiter = ConsumeDelimiter(ref fieldReader);
             if (delimiter == SP)
             {
-                replyTo = Encoding.UTF8.GetString(arg.ToSpan());
                 delimiter = ConsumeDelimiter(ref fieldReader);
+                if (delimiter == SP)
+                {
+                    replyTo = Encoding.UTF8.GetString(arg.ToSpan());
+                    delimiter = ConsumeDelimiter(ref fieldReader);
+                }
+                if (delimiter == CR)
+                    arg = ReadArgFinal(ref fieldReader);
             }
-            if (delimiter == CR)
-                arg = ReadArgFinal(ref fieldReader);
-
             var numBytes = ReadNumber(arg);
 
             if (!TryReadBytes(ref reader, numBytes, out var data))
@@ -189,7 +188,7 @@ namespace A6k.Nats.Protocol
         private static ReadOnlySequence<byte> ReadArg(ref SequenceReader<byte> reader)
         {
             if (!reader.TryReadToAny(out ReadOnlySequence<byte> arg, AnyDelimiter, advancePastDelimiter: false))
-                return reader.Sequence;
+                return reader.Sequence.Slice(reader.Position);
             return arg;
         }
         private static ReadOnlySequence<byte> ReadArgFinal(ref SequenceReader<byte> reader)

@@ -12,7 +12,7 @@ namespace A6k.Nats.Tests
         [Fact]
         public void BasicReadOp()
         {
-            var op = "pub sub1 1\r\nx";
+            var op = "info {\"server_id\":\"abc\"}\r\n";
             var buffer = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(op));
 
             var reader = new NatsOperationReader();
@@ -23,12 +23,10 @@ namespace A6k.Nats.Tests
             if (!reader.TryParseMessage(buffer, ref consumed, ref examined, out var msg))
                 throw new InvalidOperationException("bad parse");
 
-            Assert.Equal(NatsOperationId.PUB, msg.OpId);
+            Assert.Equal(NatsOperationId.INFO, msg.OpId);
             Assert.NotNull(msg.Op);
-            var pub = Assert.IsType<PubOperation>(msg.Op);
-            Assert.Equal("sub1", pub.Subject);
-            Assert.Equal(1, pub.Data.Length);
-            Assert.Equal((byte)'x', pub.Data.Span[0]);
+            var info = Assert.IsType<ServerInfo>(msg.Op);
+            Assert.Equal("abc", info.ServerId);
         }
 
 
@@ -57,7 +55,7 @@ namespace A6k.Nats.Tests
         [Fact]
         public void ParseMsg()
         {
-            var o = "msg s r 1\r\n";
+            var o = "msg sub sid 1\r\n \r\n";
             var buffer = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(o));
 
             var reader = new NatsOperationReader();
@@ -73,9 +71,39 @@ namespace A6k.Nats.Tests
             Assert.IsType<MsgOperation>(op.Op);
 
             var msg = (MsgOperation)op.Op;
-            Assert.Equal("s", msg.Subject);
+            Assert.Equal("sub", msg.Subject);
+            Assert.Equal("sid", msg.Sid);
+            Assert.Null(msg.ReplyTo);
+            Assert.Equal(1, msg.NumBytes);
+            Assert.Equal(1, msg.Data.Length);
+            Assert.Equal((byte)' ', msg.Data.ToArray()[0]);
+        }
+
+        [Fact]
+        public void ParseMsgWithReply()
+        {
+            var o = "msg sub sid r 1\r\n \r\n";
+            var buffer = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(o));
+
+            var reader = new NatsOperationReader();
+
+            var consumed = buffer.Start;
+            var examined = buffer.End;
+
+            if (!reader.TryParseMessage(buffer, ref consumed, ref examined, out var op))
+                throw new InvalidOperationException("bad parse");
+
+            Assert.Equal(NatsOperationId.MSG, op.OpId);
+            Assert.NotNull(op.Op);
+            Assert.IsType<MsgOperation>(op.Op);
+
+            var msg = (MsgOperation)op.Op;
+            Assert.Equal("sub", msg.Subject);
+            Assert.Equal("sid", msg.Sid);
             Assert.Equal("r", msg.ReplyTo);
             Assert.Equal(1, msg.NumBytes);
+            Assert.Equal(1, msg.Data.Length);
+            Assert.Equal((byte)' ', msg.Data.ToArray()[0]);
         }
     }
 }
