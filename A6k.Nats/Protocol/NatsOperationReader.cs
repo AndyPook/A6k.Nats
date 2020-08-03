@@ -181,7 +181,9 @@ namespace A6k.Nats.Protocol
             if (!TryReadBytes(ref reader, numBytes, out var data))
                 return false;
 
-            msg = new MsgOperation(subject, sid, replyTo, numBytes, data);
+            // We need to copy the payload data before passing to consumer
+            ReadOnlyMemory<byte> copyOfPayloadData = data.ToArray();
+            msg = new MsgOperation(subject, sid, replyTo, numBytes, copyOfPayloadData);
             return true;
         }
 

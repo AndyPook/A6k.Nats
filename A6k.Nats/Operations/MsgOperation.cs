@@ -4,13 +4,13 @@ namespace A6k.Nats.Operations
 {
     public readonly struct MsgOperation
     {
-        public MsgOperation(string subject, string sid, string replyTo, int numBytes, ReadOnlySpan<byte> data)
+        public MsgOperation(string subject, string sid, string replyTo, int numBytes, ReadOnlyMemory<byte> data)
         {
             Subject = subject;
             Sid = sid;
             ReplyTo = replyTo;
             NumBytes = numBytes;
-            Data = data.ToArray();
+            Data = data;
         }
 
         public string Subject { get; }
