@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using A6k.Nats;
+using A6k.Nats.Operations;
 using Bedrock.Framework;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -36,6 +38,8 @@ namespace NatsConsole
             var conn = await client.ConnectAsync(new IPEndPoint(IPAddress.Loopback, 4222));
             var nats = new NatsClient();
             await nats.ConnectAsync(new IPEndPoint(IPAddress.Loopback, 4222), sp);
+
+            nats.Connect(new ConnectOperation { Verbose = false });
 
             // test this with "pub test2 2\r\nhi" from telnet
             nats.Sub("test2", "1", msg =>

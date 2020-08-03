@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Bedrock.Framework.Protocols;
 
@@ -38,10 +39,11 @@ namespace A6k.Nats.Protocol
         }
         public void WriteJson<T>(T data)
         {
-            using var json = new Utf8JsonWriter(output);
-            JsonSerializer.Serialize<T>(json, data);
+            Commit();
+            using var json = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, Indented = false });
+            JsonSerializer.Serialize(json, data, new JsonSerializerOptions { IgnoreNullValues = true });
             json.Flush();
-            Advance((int)json.BytesCommitted);
+            EnsureMore();
         }
     }
 

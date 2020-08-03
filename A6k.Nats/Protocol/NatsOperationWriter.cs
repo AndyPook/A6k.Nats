@@ -67,7 +67,7 @@ namespace A6k.Nats.Protocol
 
         private static void WriteConnect(ref NatsWriter writer, ConnectOperation op)
         {
-            writer.WriteString($"CONNECT ");
+            writer.WriteString("CONNECT ");
             writer.WriteJson(op);
             writer.Write(CRLF);
         }
