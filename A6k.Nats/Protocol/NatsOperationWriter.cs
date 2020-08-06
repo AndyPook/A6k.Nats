@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
-using System.Text.Json;
 using A6k.Nats.Operations;
+using Bedrock.Framework.Infrastructure;
 using Bedrock.Framework.Protocols;
 
 namespace A6k.Nats.Protocol
@@ -15,7 +15,7 @@ namespace A6k.Nats.Protocol
 
         public void WriteMessage(NatsOperation operation, IBufferWriter<byte> output)
         {
-            var writer = new NatsWriter(output);
+            var writer = new BufferWriter<IBufferWriter<byte>>(output);
             switch (operation.OpId)
             {
                 case NatsOperationId.PING:
@@ -38,7 +38,7 @@ namespace A6k.Nats.Protocol
             writer.Commit();
         }
 
-        private static void WritePub(ref NatsWriter writer, PubOperation op)
+        private static void WritePub(ref BufferWriter<IBufferWriter<byte>> writer, PubOperation op)
         {
             writer.WriteString($"PUB {op.Subject} ");
             if (!string.IsNullOrEmpty(op.ReplyTo))
@@ -52,7 +52,7 @@ namespace A6k.Nats.Protocol
             writer.Write(CRLF);
         }
 
-        private static void WriteSub(ref NatsWriter writer, SubOperation op)
+        private static void WriteSub(ref BufferWriter<IBufferWriter<byte>> writer, SubOperation op)
         {
             writer.WriteString($"SUB {op.Subject}");
             if (!string.IsNullOrEmpty(op.QueueGroup))
@@ -65,7 +65,7 @@ namespace A6k.Nats.Protocol
             writer.Write(CRLF);
         }
 
-        private static void WriteConnect(ref NatsWriter writer, ConnectOperation op)
+        private static void WriteConnect(ref BufferWriter<IBufferWriter<byte>> writer, ConnectOperation op)
         {
             writer.WriteString("CONNECT ");
             writer.WriteJson(op);

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Text;
 using A6k.Nats.Operations;
 using A6k.Nats.Protocol;
+using Bedrock.Framework.Infrastructure;
 using Xunit;
 
 namespace A6k.Nats.Tests
@@ -18,9 +19,9 @@ namespace A6k.Nats.Tests
         public void WriteInt_must_write_integer_to_buffer_as_a_string(int number)
         {
             var buffer = new ArrayBufferWriter<byte>(initialCapacity: 64);
-            var sut = new NatsWriter(buffer);
-            sut.WriteInt(number);
-            sut.Commit();
+            var writer = new BufferWriter<IBufferWriter<byte>>(buffer);
+            writer.WriteInt(number);
+            writer.Commit();
 
             var writtenString = Encoding.UTF8.GetString(buffer.WrittenSpan);
             Assert.Equal(number.ToString(), writtenString);
@@ -31,9 +32,9 @@ namespace A6k.Nats.Tests
         {
             var objectToSerialize = new SerializableObject { SomeProp = 123, AnotherProp = new string('A', 1024) };
             var buffer = new ArrayBufferWriter<byte>(initialCapacity: 128);
-            var sut = new NatsWriter(buffer);
-            sut.WriteJson(objectToSerialize);
-            sut.Commit();
+            var writer = new BufferWriter<IBufferWriter<byte>>(buffer);
+            writer.WriteJson(objectToSerialize);
+            writer.Commit();
 
             var writtenString = Encoding.UTF8.GetString(buffer.WrittenSpan);
             var deserializedObject = System.Text.Json.JsonSerializer.Deserialize<SerializableObject>(writtenString);
@@ -46,10 +47,10 @@ namespace A6k.Nats.Tests
         {
             var objectToSerialize = new SerializableObject { SomeProp = 123, AnotherProp = "foobar" };
             var buffer = new ArrayBufferWriter<byte>();
-            var sut = new NatsWriter(buffer);
-            sut.WriteJson(objectToSerialize);
-            sut.Write(new byte[] { 65, 66, 67, 68 }); // ABCD as ASCII
-            sut.Commit();
+            var writer = new BufferWriter<IBufferWriter<byte>>(buffer);
+            writer.WriteJson(objectToSerialize);
+            writer.Write(new byte[] { 65, 66, 67, 68 }); // ABCD as ASCII
+            writer.Commit();
 
             var writtenString = Encoding.UTF8.GetString(buffer.WrittenSpan);
             Assert.EndsWith("ABCD", writtenString);
@@ -60,11 +61,11 @@ namespace A6k.Nats.Tests
         {
             var objectToSerialize = new SerializableObject { SomeProp = 123, AnotherProp = "foobar" };
             var buffer = new ArrayBufferWriter<byte>();
-            var sut = new NatsWriter(buffer);
-            sut.Write(new byte[] { 65, 66, 67, 68 }); // ABCD as ASCII
-            sut.WriteJson(objectToSerialize);
-            sut.Write(new byte[] { 48, 49, 50, 51 }); // 0123 as ASCII
-            sut.Commit();
+            var writer = new BufferWriter<IBufferWriter<byte>>(buffer);
+            writer.Write(new byte[] { 65, 66, 67, 68 }); // ABCD as ASCII
+            writer.WriteJson(objectToSerialize);
+            writer.Write(new byte[] { 48, 49, 50, 51 }); // 0123 as ASCII
+            writer.Commit();
 
             var writtenString = Encoding.UTF8.GetString(buffer.WrittenSpan);
             Assert.StartsWith("ABCD", writtenString);
