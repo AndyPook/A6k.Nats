@@ -35,7 +35,7 @@ namespace NatsConsole
 
             nats.Connect(new ConnectOperation { Verbose = false });
 
-            nats.Sub("test", msg =>
+            nats.Subscribe("test", msg =>
             {
                 var text = Encoding.UTF8.GetString(msg.Data.Span);
                 Console.WriteLine($"OnMsg: subject:{msg.Subject} sid:{msg.Sid} replyto:{msg.ReplyTo} text:{text}");
@@ -44,7 +44,7 @@ namespace NatsConsole
             while (!cts.Token.IsCancellationRequested)
             {
                 Console.WriteLine("pub...");
-                nats.Pub("test", Encoding.UTF8.GetBytes("hello"));
+                nats.Publish("test", Encoding.UTF8.GetBytes("hello"));
                 await Task.Delay(2000);
             }
 

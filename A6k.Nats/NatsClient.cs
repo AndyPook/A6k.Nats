@@ -1,39 +1,29 @@
-using System;
+﻿using System;
+using System.Globalization;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using A6k.Nats.Operations;
 using A6k.Nats.Protocol;
 using Bedrock.Framework;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace A6k.Nats
 {
-    public static class NatsCLientExtensions
-    {
-        public static void Sub(this NatsClient nats, string subject, string sid, Action<MsgOperation> handler)
-        {
-            nats.Sub(subject, sid, new DelegateMessageSubscription(handler));
-        }
-
-        public static void Sub(this NatsClient nats, string subject, string sid, Func<MsgOperation, ValueTask> handler)
-        {
-            nats.Sub(subject, sid, new DelegateMessageSubscription(handler));
-        }
-    }
-
     public class NatsClient : INatsOperationHandler
     {
         private NatsClientProtocol nats;
         private INatsSubscriptionManager subscriptions = new NatsSubscriptionManager();
+        private long ssid = 0;
         private ILogger logger;
 
         public ServerInfo Info { get; private set; }
 
-        public async Task ConnectAsync(EndPoint endpoint, IServiceProvider serviceProvider)
+        public async ValueTask StartAsync(EndPoint endpoint, IServiceProvider serviceProvider)
         {
             if (serviceProvider is null)
-            {
                 throw new ArgumentNullException(nameof(serviceProvider));
-            }
 
             logger = serviceProvider.GetRequiredService<ILogger<NatsClient>>();
             var client = new ClientBuilder(serviceProvider)
@@ -45,24 +35,25 @@ namespace A6k.Nats
             nats = new NatsClientProtocol(conn, this);
         }
 
-
         public void Ping() => nats.Send(NatsOperationId.PING);
         public void Pong() => nats.Send(NatsOperationId.PONG);
         public void Connect(ConnectOperation connect) => nats.Send(NatsOperationId.CONNECT, connect);
 
-        public void Pub(string subject, byte[] data)
-            => nats.Send(NatsOperationId.PUB, new PubOperation(subject, null, data));
-        public void Pub(string subject, string replyto, byte[] data)
+        public void Publish(string subject, string replyto, byte[] data)
             => nats.Send(NatsOperationId.PUB, new PubOperation(subject, replyto, data));
 
-        public void Sub(string subject, string sid, IMessageSubscription handler)
+        public ISubscription Subscribe(string subject, string queueGroup, IMessageSubscription handler)
         {
+            var sid = GetNextSid();
             subscriptions.Sub(subject, sid, handler);
-            nats.Send(NatsOperationId.SUB, new SubOperation(subject, sid));
+            nats.Send(NatsOperationId.SUB, new SubOperation(subject, queueGroup, sid));
+            return new Subscription(this, subject, queueGroup, sid);
         }
+        private string GetNextSid() => Interlocked.Increment(ref ssid).ToString(CultureInfo.InvariantCulture);
+
         public void UnSub(string sid, int? maxMessages = default)
         {
-            //subscriptions.UnSub(sid);
+            subscriptions.UnSub(sid);
             nats.Send(NatsOperationId.UNSUB, new UnSubOperation(sid, maxMessages));
         }
 
@@ -107,5 +98,30 @@ namespace A6k.Nats
         {
             Console.WriteLine("Connection Closed");
         }
+    }
+
+    public interface ISubscription : IDisposable
+    {
+        string Subject { get; }
+        string Queue { get; }
+        string Sid { get; }
+    }
+    public class Subscription : ISubscription
+    {
+        private readonly NatsClient nats;
+
+        public Subscription(NatsClient nats, string subject, string queue, string sid)
+        {
+            this.nats = nats;
+            Subject = subject;
+            Queue = queue;
+            Sid = sid;
+        }
+
+        public string Subject { get; }
+        public string Queue { get; }
+        public string Sid { get; }
+
+        public void Dispose() => nats.UnSub(Sid);
     }
 }
