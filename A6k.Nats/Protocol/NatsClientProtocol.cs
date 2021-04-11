@@ -22,8 +22,8 @@ namespace A6k.Nats.Protocol
         {
             this.connection = connection;
             this.operationHandler = operationHandler;
-            StartInbound();
-            StartOutbound();
+            StartInbound(connection.ConnectionClosed);
+            StartOutbound(connection.ConnectionClosed);
         }
 
         public ValueTask Send(NatsOperationId opId, object op = default) => outboundChannel.WriteAsync(new NatsOperation(opId, op));
@@ -40,7 +40,7 @@ namespace A6k.Nats.Protocol
             _ = ProcessOutbound(reader, cancellationToken).ConfigureAwait(false);
         }
 
-        private async ValueTask ProcessOutbound(ChannelReader<NatsOperation> outboundReader, CancellationToken cancellationToken)
+        private async Task ProcessOutbound(ChannelReader<NatsOperation> outboundReader, CancellationToken cancellationToken)
         {
             await Task.Yield();
             var opWriter = new NatsOperationWriter();
