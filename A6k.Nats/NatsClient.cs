@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using A6k.Nats.Operations;
@@ -24,6 +24,7 @@ namespace A6k.Nats
     {
         private NatsClientProtocol nats;
         private INatsSubscriptionManager subscriptions = new NatsSubscriptionManager();
+        private ILogger logger;
 
         public ServerInfo Info { get; private set; }
 
@@ -34,6 +35,7 @@ namespace A6k.Nats
                 throw new ArgumentNullException(nameof(serviceProvider));
             }
 
+            logger = serviceProvider.GetRequiredService<ILogger<NatsClient>>();
             var client = new ClientBuilder(serviceProvider)
                 .UseSockets()
                 //.UseConnectionLogging()
@@ -69,32 +71,32 @@ namespace A6k.Nats
             switch (op.OpId)
             {
                 case NatsOperationId.PING:
-                    Console.WriteLine("--- ping");
+                    logger.LogTrace("--- ping");
                     Pong();
                     break;
                 case NatsOperationId.PONG:
-                    Console.WriteLine("--- pong");
+                    logger.LogTrace("--- pong");
                     break;
                 case NatsOperationId.OK:
-                    Console.WriteLine("--- OK");
+                    logger.LogTrace("--- OK");
                     break;
                 case NatsOperationId.ERR:
                     var err = (ErrOperation)op.Op;
-                    Console.WriteLine($"--- ERR: {err}");
+                    logger.LogTrace($"--- ERR: {err}");
                     break;
 
                 case NatsOperationId.INFO:
                     Info = (ServerInfo)op.Op;
-                    Console.WriteLine($"--- INFO: {Info}");
+                    logger.LogTrace($"--- INFO: {Info}");
                     break;
 
                 case NatsOperationId.MSG:
                     var msg = (MsgOperation)op.Op;
-                    Console.WriteLine($"--- MSG: {op.Op}");
+                    logger.LogTrace($"--- MSG: {op.Op}");
                     return subscriptions.InvokeAsync(msg);
 
                 default:
-                    Console.WriteLine($"--- UNSUPPORTED - {op.OpId}");
+                    logger.LogError("--- UNSUPPORTED - {OpId}", op.OpId);
                     break;
             }
 

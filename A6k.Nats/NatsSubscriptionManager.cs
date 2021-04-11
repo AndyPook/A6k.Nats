@@ -14,8 +14,6 @@ namespace A6k.Nats
             if (subscriptions.TryGetValue(msg.Sid, out var handler))
                 return handler.HandleAsync(msg);
 
-            //var text = Encoding.UTF8.GetString(data);
-            //Console.WriteLine($"OnMsg: sid:{sid} replyto:{replyto} text:{text}");
             return default;
         }
 
